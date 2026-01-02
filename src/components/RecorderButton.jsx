@@ -15,12 +15,25 @@ const RecorderButton = ({ recordingState, onStart, onStop }) => {
 
     return (
         <button
-            className={`recorder-button ${isRecording ? 'recording' : ''}`}
+            className={`btn-record ${isRecording ? 'recording' : ''}`}
             onClick={handleClick}
             disabled={isLoading}
-            style={{ opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'wait' : 'pointer' }}
         >
-            {isLoading ? 'Connecting...' : (isRecording ? 'Stop Recording' : 'Start Recording')}
+            {isLoading ? (
+                <>
+                    <span>Connecting...</span>
+                </>
+            ) : isRecording ? (
+                <>
+                    <span style={{ fontSize: '1em' }}>⏹</span>
+                    <span>Stop Recording</span>
+                </>
+            ) : (
+                <>
+                    <span style={{ fontSize: '1em' }}>🎙</span>
+                    <span>Start Recording</span>
+                </>
+            )}
         </button>
     );
 };

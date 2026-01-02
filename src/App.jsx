@@ -1,38 +1,48 @@
-import React, { useState } from 'react';
+import React from 'react';
 import RecorderButton from './components/RecorderButton';
 import TranscriptView from './components/TranscriptView';
 import useRecorder from './hooks/useRecorder';
 
 function App() {
-  // Main hook
   const { recordingState, errorMessage, transcript, interimTranscript, startRecording, stopRecording } = useRecorder();
 
   return (
-    <div className="container">
-      <h1>Wispr Clone</h1>
+    <>
+      <header>
+        <h1>Vocal</h1>
+      </header>
 
-      {errorMessage && (
-        <div className="error-banner" style={{ color: 'red', margin: '1rem 0' }}>
-          {errorMessage}
+      <main>
+        {errorMessage && (
+          <div className="error-banner">
+            ❌ {errorMessage}
+          </div>
+        )}
+
+        <div className="transcript-card">
+          <TranscriptView
+            transcript={transcript}
+            interimTranscript={interimTranscript}
+          />
         </div>
-      )}
 
-      <div className="row">
-        <RecorderButton
-          recordingState={recordingState}
-          onStart={startRecording}
-          onStop={stopRecording}
-        />
-      </div>
+        <div className="controls">
+          <RecorderButton
+            recordingState={recordingState}
+            onStart={startRecording}
+            onStop={stopRecording}
+          />
+        </div>
+      </main>
 
-      <div className="row">
-        <TranscriptView transcript={transcript} interimTranscript={interimTranscript} />
-      </div>
-
-      <div className="status-bar" style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#666' }}>
-        Status: {recordingState}
-      </div>
-    </div>
+      <footer className="status-bar">
+        <div className="status-indicator">
+          <span className={`dot ${recordingState === 'recording' ? 'connected' : (recordingState === 'loading' ? 'connecting' : (recordingState === 'error' ? 'error' : ''))}`}></span>
+          <span>{recordingState.charAt(0).toUpperCase() + recordingState.slice(1)}</span>
+        </div>
+        <div style={{ opacity: 0.5 }}>v0.1.0</div>
+      </footer>
+    </>
   );
 }
 

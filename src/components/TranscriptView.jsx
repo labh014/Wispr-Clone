@@ -1,37 +1,30 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
 const TranscriptView = ({ transcript, interimTranscript }) => {
-    return (
-        <div className="transcript-view" style={{
-            marginTop: '2rem',
-            padding: '1rem',
-            border: '1px solid #e0e0e0',
-            borderRadius: '12px',
-            minHeight: '100px',
-            backgroundColor: '#fff',
-            fontSize: '1.2rem',
-            lineHeight: '1.6',
-            color: '#333',
-            whiteSpace: 'pre-wrap', // Preserve lines
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-        }}>
-            {transcript || interimTranscript ? (
-                <p className="transcript-text" style={{ margin: 0 }}>
-                    {/* Final confirmed text */}
-                    <span>{transcript}</span>
+    const endRef = useRef(null);
 
-                    {/* Interim/Guessing text (Gray) */}
-                    {interimTranscript && (
-                        <span style={{ color: '#888', transition: 'color 0.2s' }}>
-                            {(transcript ? " " : "") + interimTranscript}
-                        </span>
-                    )}
-                </p>
-            ) : (
-                <p className="placeholder-text" style={{ color: '#aaa', fontStyle: 'italic', margin: 0 }}>
-                    Start speaking to see your text here...
-                </p>
+    // Auto-scroll to bottom
+    useEffect(() => {
+        endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [transcript, interimTranscript]);
+
+    if (!transcript && !interimTranscript) {
+        return (
+            <div className="placeholder">
+                <p>Tap the microphone to start transcribing.....</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="transcript-content">
+            <span className="transcript-final">{transcript}</span>
+            {interimTranscript && (
+                <span className="transcript-interim">
+                    {(transcript ? " " : "") + interimTranscript}
+                </span>
             )}
+            <div ref={endRef} />
         </div>
     );
 };

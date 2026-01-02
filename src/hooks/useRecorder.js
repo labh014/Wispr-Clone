@@ -1,15 +1,21 @@
 import { useState, useCallback, useRef } from 'react';
 import { startAudio, stopAudio } from '../services/audioService';
-import { connectToDeepgram, sendAudio, closeDeepgram } from '../services/deepgramService';
+import { DeepgramClient } from '../services/deepgramService';
 
+/**
+ * Recorder Hook
+ * Controller Layer: Manages UI State and orchestrates Audio + Deepgram services.
+ */
 const useRecorder = () => {
     const [recordingState, setRecordingState] = useState('idle');
     const [errorMessage, setErrorMessage] = useState('');
+
+    // UI Data States
     const [transcript, setTranscript] = useState('');
     const [interimTranscript, setInterimTranscript] = useState('');
 
-    const socketRef = useRef(null);
-    const audioQueue = useRef([]);
+    // Refs for Services
+    const deepgramRef = useRef(null);
 
     const startRecording = useCallback(async () => {
         if (recordingState === 'loading' || recordingState === 'recording') return;
@@ -19,72 +25,62 @@ const useRecorder = () => {
             setErrorMessage('');
             setTranscript('');
             setInterimTranscript('');
-            audioQueue.current = [];
 
+            // 1. Initialize Deepgram Service
             const apiKey = import.meta.env.VITE_DEEPGRAM_API_KEY;
             if (!apiKey) throw new Error("API Key missing");
 
-            // Connect WebSocket
-            socketRef.current = connectToDeepgram(apiKey,
+            const client = new DeepgramClient(apiKey);
+            deepgramRef.current = client;
+
+            client.connect(
+                // On Transcript
                 (text, isFinal) => {
                     if (!text) return;
-
                     if (isFinal) {
-                        setTranscript((prev) => prev + (prev ? " " : "") + text);
+                        setTranscript(prev => prev + (prev ? " " : "") + text);
                         setInterimTranscript('');
                     } else {
                         setInterimTranscript(text);
                     }
                 },
-                // No-op logger
-                () => { },
-                // On Open: Flush buffer
-                () => {
-                    if (audioQueue.current.length > 0) {
-                        audioQueue.current.forEach((chunk) => {
-                            sendAudio(socketRef.current, chunk);
-                        });
-                        audioQueue.current = [];
-                    }
+                // On Error
+                (err) => {
+                    setErrorMessage(err);
+                    setRecordingState('error');
+                    stopRecording();
                 }
             );
 
-            // Handle Audio
-            const handleAudioChunk = (chunk) => {
-                if (socketRef.current) {
-                    const state = socketRef.current.readyState;
-                    if (state === WebSocket.OPEN) {
-                        sendAudio(socketRef.current, chunk);
-                    } else if (state === WebSocket.CONNECTING) {
-                        audioQueue.current.push(chunk);
-                    }
+            // 2. Start Audio & Pipe to Deepgram
+            await startAudio((chunk) => {
+                // Simply pass chunk to client. 
+                // Client handles buffering if connecting, or sending if open.
+                if (deepgramRef.current) {
+                    deepgramRef.current.send(chunk);
                 }
-            };
+            });
 
-            await startAudio(handleAudioChunk);
             setRecordingState('recording');
 
         } catch (error) {
-            console.error(error);
             setRecordingState('error');
             setErrorMessage(error.message);
         }
     }, [recordingState]);
 
     const stopRecording = useCallback(() => {
-        try {
-            stopAudio();
-            if (socketRef.current) {
-                closeDeepgram(socketRef.current);
-                socketRef.current = null;
-            }
-            audioQueue.current = [];
-            setRecordingState('idle');
-            setInterimTranscript('');
-        } catch (error) {
-            console.error(error);
-            setRecordingState('idle');
+        // 1. Stop Audio
+        stopAudio();
+
+        // 2. Disconnect Deepgram
+        if (deepgramRef.current) {
+            deepgramRef.current.disconnect();
+            deepgramRef.current = null;
         }
+
+        setRecordingState('idle');
+        setInterimTranscript('');
     }, []);
 
     return {
