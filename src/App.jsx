@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import RecorderButton from './components/RecorderButton';
 import TranscriptView from './components/TranscriptView';
 import useRecorder from './hooks/useRecorder';
 
 function App() {
-  const { recordingState, errorMessage, transcript, startRecording, stopRecording } = useRecorder();
+  // Main hook
+  const { recordingState, errorMessage, transcript, interimTranscript, startRecording, stopRecording } = useRecorder();
 
   return (
     <div className="container">
@@ -25,7 +26,7 @@ function App() {
       </div>
 
       <div className="row">
-        <TranscriptView transcript={transcript} />
+        <TranscriptView transcript={transcript} interimTranscript={interimTranscript} />
       </div>
 
       <div className="status-bar" style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#666' }}>

@@ -1,41 +1,88 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { startAudio, stopAudio } from '../services/audioService';
+import { connectToDeepgram, sendAudio, closeDeepgram } from '../services/deepgramService';
 
 const useRecorder = () => {
-    // Step 2.8: Handle UI states (idle, recording, error)
-    const [recordingState, setRecordingState] = useState('idle'); // 'idle' | 'recording' | 'error'
+    const [recordingState, setRecordingState] = useState('idle');
     const [errorMessage, setErrorMessage] = useState('');
     const [transcript, setTranscript] = useState('');
+    const [interimTranscript, setInterimTranscript] = useState('');
+
+    const socketRef = useRef(null);
+    const audioQueue = useRef([]);
 
     const startRecording = useCallback(async () => {
-        try {
-            setErrorMessage(''); // Clear previous errors
+        if (recordingState === 'loading' || recordingState === 'recording') return;
 
-            // Step 2.7: Connect audioService to UI
-            // Log chunks to console for verification for now
+        try {
+            setRecordingState('loading');
+            setErrorMessage('');
+            setTranscript('');
+            setInterimTranscript('');
+            audioQueue.current = [];
+
+            const apiKey = import.meta.env.VITE_DEEPGRAM_API_KEY;
+            if (!apiKey) throw new Error("API Key missing");
+
+            // Connect WebSocket
+            socketRef.current = connectToDeepgram(apiKey,
+                (text, isFinal) => {
+                    if (!text) return;
+
+                    if (isFinal) {
+                        setTranscript((prev) => prev + (prev ? " " : "") + text);
+                        setInterimTranscript('');
+                    } else {
+                        setInterimTranscript(text);
+                    }
+                },
+                // No-op logger
+                () => { },
+                // On Open: Flush buffer
+                () => {
+                    if (audioQueue.current.length > 0) {
+                        audioQueue.current.forEach((chunk) => {
+                            sendAudio(socketRef.current, chunk);
+                        });
+                        audioQueue.current = [];
+                    }
+                }
+            );
+
+            // Handle Audio
             const handleAudioChunk = (chunk) => {
-                console.log("Audio chunk received:", chunk.size, "bytes");
-                // TODO: Send to Deepgram in Hour 3
+                if (socketRef.current) {
+                    const state = socketRef.current.readyState;
+                    if (state === WebSocket.OPEN) {
+                        sendAudio(socketRef.current, chunk);
+                    } else if (state === WebSocket.CONNECTING) {
+                        audioQueue.current.push(chunk);
+                    }
+                }
             };
 
             await startAudio(handleAudioChunk);
-
             setRecordingState('recording');
 
         } catch (error) {
-            console.error("Failed to start recording:", error);
+            console.error(error);
             setRecordingState('error');
             setErrorMessage(error.message);
         }
-    }, []);
+    }, [recordingState]);
 
     const stopRecording = useCallback(() => {
         try {
             stopAudio();
+            if (socketRef.current) {
+                closeDeepgram(socketRef.current);
+                socketRef.current = null;
+            }
+            audioQueue.current = [];
             setRecordingState('idle');
+            setInterimTranscript('');
         } catch (error) {
-            console.error("Error stopping recording:", error);
-            // Even if stop fails, we probably want to reset state to idle to allow retry
+            console.error(error);
             setRecordingState('idle');
         }
     }, []);
@@ -44,6 +91,7 @@ const useRecorder = () => {
         recordingState,
         errorMessage,
         transcript,
+        interimTranscript,
         startRecording,
         stopRecording
     };
