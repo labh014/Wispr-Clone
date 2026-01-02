@@ -43,3 +43,6 @@ npm run tauri dev
 
  ## Build
 npm run tauri build
+
+## Download (Windows)
+You can download the latest Windows installer (.msi) from the **[Releases Page](https://github.com/labh014/Wispr-Clone/releases)**.
