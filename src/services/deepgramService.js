@@ -1,8 +1,3 @@
-/**
- * Deepgram Client
- * Encapsulates all WebSocket logic, buffering, and keep-alive mechanics.
- * Strictly separates Network logic from UI logic.
- */
 export class DeepgramClient {
     constructor(apiKey) {
         this.apiKey = apiKey;
@@ -15,11 +10,6 @@ export class DeepgramClient {
         };
     }
 
-    /**
-     * Connect to Deepgram Service
-     * @param {Function} onTranscript - (text, isFinal) => void
-     * @param {Function} onError - (error) => void
-     */
     connect(onTranscript, onError) {
         this.callbacks.onTranscript = onTranscript;
         this.callbacks.onError = onError;
@@ -38,24 +28,16 @@ export class DeepgramClient {
         }
     }
 
-    /**
-     * Send audio raw data.
-     * Automatically buffers if connecting, sends if open.
-     * @param {Blob} audioChunk 
-     */
     send(audioChunk) {
-        if (!this.socket) return; // Disconnected
+        if (!this.socket) return;
 
         if (this.socket.readyState === WebSocket.OPEN) {
             this.socket.send(audioChunk);
         } else if (this.socket.readyState === WebSocket.CONNECTING) {
-            this.audioQueue.push(audioChunk);
+            this.audioQueue.push(audioChunk); // Buffer
         }
     }
 
-    /**
-     * Cleanly close connection
-     */
     disconnect() {
         if (this.socket) {
             if (this.socket.readyState === WebSocket.OPEN) {
@@ -73,16 +55,14 @@ export class DeepgramClient {
         this.audioQueue = [];
     }
 
-    // --- Private Handlers ---
-
     _handleOpen() {
         // Flush buffer
         if (this.audioQueue.length > 0) {
             this.audioQueue.forEach(chunk => this.socket.send(chunk));
-            this.audioQueue = []; // Clear
+            this.audioQueue = [];
         }
 
-        // Start heartbeat
+        // Heartbeat
         this.keepAliveInterval = setInterval(() => {
             if (this.socket && this.socket.readyState === WebSocket.OPEN) {
                 this.socket.send(JSON.stringify({ type: 'KeepAlive' }));
@@ -102,15 +82,13 @@ export class DeepgramClient {
                 }
             }
         } catch (error) {
-            console.error("Deepgram Parse Error", error);
+            // Ignore parse errors
         }
     }
 
     _handleError(error) {
-        if (this.callbacks.onError) this.callbacks.onError("WebSocket Connection Error");
+        if (this.callbacks.onError) this.callbacks.onError("WebSocket Error");
     }
 
-    _handleClose(event) {
-        // Optional: Could trigger auto-reconnect here if desired
-    }
+    _handleClose(event) { }
 }

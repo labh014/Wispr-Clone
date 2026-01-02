@@ -15,7 +15,7 @@ function App() {
       <main>
         {errorMessage && (
           <div className="error-banner">
-            ❌ {errorMessage}
+             {errorMessage}
           </div>
         )}
 

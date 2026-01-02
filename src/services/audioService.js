@@ -1,7 +1,6 @@
 let mediaRecorder = null;
 let stream = null;
 
-// Get supported mime
 const getSupportedMimeType = () => {
     const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
     for (const type of types) {
@@ -22,7 +21,7 @@ export const stopAudio = () => {
 };
 
 export const startAudio = async (onAudioChunk, onLog = console.log) => {
-    stopAudio(); // Ensure clean start
+    stopAudio();
 
     try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -37,8 +36,7 @@ export const startAudio = async (onAudioChunk, onLog = console.log) => {
             }
         };
 
-        // Low latency slice
-        mediaRecorder.start(250);
+        mediaRecorder.start(250); // Low latency
 
     } catch (error) {
         throw error;
